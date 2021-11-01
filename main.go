@@ -42,18 +42,18 @@ func getWeightString(weight int64) string {
 	return fmt.Sprint(weight) + "b"
 }
 
-func drawCatalog(dir *dirContent, printFile, lastInDir bool, indent string) (scheme string) {
+func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string) {
 	for _, readFile := range *dir {
 		if readFile.isDir {
 			if dir.lastInDir(&readFile) {
 				scheme += fmt.Sprintf("%s%s %s\n", indent, last, readFile.filename)
-				scheme += drawCatalog(readFile.content, printFile, true, indent+"\t")
+				scheme += drawCatalog(readFile.content, true, indent+"\t")
 			} else {
 				scheme += fmt.Sprintf("%s%s %s \n", indent, notLastDir, readFile.filename)
-				scheme += drawCatalog(readFile.content, printFile, false, indent+notLast+"\t")
+				scheme += drawCatalog(readFile.content, false, indent+notLast+"\t")
 			}
 		}
-		if !readFile.isDir && printFile {
+		if !readFile.isDir {
 			if dir.lastInDir(&readFile) {
 				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, last, readFile.filename, getWeightString(readFile.weight))
 			} else {
@@ -66,10 +66,10 @@ func drawCatalog(dir *dirContent, printFile, lastInDir bool, indent string) (sch
 
 func main() {
 	out := os.Stdout
-	// if !(len(os.Args) == 2 || len(os.Args) == 3) {
-	// 	panic("usage go run main.go . [-f]")
-	// }
-	path := "."
+	if !(len(os.Args) == 2 || len(os.Args) == 3) {
+		panic("usage go run main.go . [-f]")
+	}
+	path := os.Args[1]
 	printFiles := len(os.Args) == 3 && os.Args[2] == "-f"
 	err := dirTree(out, path, printFiles)
 	if err != nil {
@@ -78,12 +78,15 @@ func main() {
 }
 
 func dirTree(out *os.File, path string, printFile bool) error {
-	dirCont, _ := readDir(path)
-	fmt.Println(drawCatalog(dirCont, printFile, false, ""))
+	dirCont, err := readDir(path, printFile)
+	if err != nil {
+		return err
+	}
+	fmt.Println(drawCatalog(dirCont, false, ""))
 	return nil
 }
 
-func readDir(path string) (*dirContent, error) { // читает содержимое каталогов до конца дерева
+func readDir(path string, printFiles bool) (*dirContent, error) { // читает содержимое каталогов до конца дерева
 	dir, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("error on read directory info : %s", err.Error())
@@ -91,14 +94,16 @@ func readDir(path string) (*dirContent, error) { // читает содержи�
 
 	dirCont := make(dirContent, 0, len(dir))
 
-	for i, dirEntry := range dir {
-		dirCont = append(dirCont, fileType{filename: dirEntry.Name(), isDir: dirEntry.IsDir(), parent: path, weight: getFileWeight(path + string(sep) + dirEntry.Name())})
+	for _, dirEntry := range dir {
+		if dirEntry.IsDir() || printFiles {
+			dirCont = append(dirCont, fileType{filename: dirEntry.Name(), isDir: dirEntry.IsDir(), parent: path, weight: getFileWeight(path + string(sep) + dirEntry.Name())})
+		}
 		if dirEntry.IsDir() {
-			newDirCont, err := readDir(path + string(sep) + dirEntry.Name())
+			newDirCont, err := readDir(path+string(sep)+dirEntry.Name(), printFiles)
 			if err != nil {
 				return &dirCont, err
 			}
-			dirCont[i].content = newDirCont
+			dirCont[len(dirCont)-1].content = newDirCont
 		}
 	}
 
