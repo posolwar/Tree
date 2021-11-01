@@ -3,15 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-	_ "path/filepath"
-	_ "strings"
 )
 
 const (
-	sep        = os.PathSeparator
-	notLastDir = "├───"
-	notLast    = "│"
-	last       = "└───"
+	separator     = os.PathSeparator
+	notLastDir    = "├───"
+	notLastFile   = "│"
+	lastFileOrDir = "└───"
 )
 
 type dirContent []fileType
@@ -42,20 +40,20 @@ func getWeightString(weight int64) string {
 	return fmt.Sprint(weight) + "b"
 }
 
-func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string) {
+func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string) { // временный способ отрисовки?
 	for _, readFile := range *dir {
 		if readFile.isDir {
 			if dir.lastInDir(&readFile) {
-				scheme += fmt.Sprintf("%s%s %s\n", indent, last, readFile.filename)
+				scheme += fmt.Sprintf("%s%s %s\n", indent, lastFileOrDir, readFile.filename)
 				scheme += drawCatalog(readFile.content, true, indent+"\t")
 			} else {
 				scheme += fmt.Sprintf("%s%s %s \n", indent, notLastDir, readFile.filename)
-				scheme += drawCatalog(readFile.content, false, indent+notLast+"\t")
+				scheme += drawCatalog(readFile.content, false, indent+notLastFile+"\t")
 			}
 		}
 		if !readFile.isDir {
 			if dir.lastInDir(&readFile) {
-				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, last, readFile.filename, getWeightString(readFile.weight))
+				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, lastFileOrDir, readFile.filename, getWeightString(readFile.weight))
 			} else {
 				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, notLastDir, readFile.filename, getWeightString(readFile.weight))
 			}
@@ -64,7 +62,7 @@ func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string)
 	return
 }
 
-func main() {
+func main() { // main задания, не трогал.
 	out := os.Stdout
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
 		panic("usage go run main.go . [-f]")
@@ -77,7 +75,7 @@ func main() {
 	}
 }
 
-func dirTree(out *os.File, path string, printFile bool) error {
+func dirTree(out *os.File, path string, printFile bool) error { // работе с деревом
 	dirCont, err := readDir(path, printFile)
 	if err != nil {
 		return err
@@ -96,10 +94,10 @@ func readDir(path string, printFiles bool) (*dirContent, error) { // читае�
 
 	for _, dirEntry := range dir {
 		if dirEntry.IsDir() || printFiles {
-			dirCont = append(dirCont, fileType{filename: dirEntry.Name(), isDir: dirEntry.IsDir(), parent: path, weight: getFileWeight(path + string(sep) + dirEntry.Name())})
+			dirCont = append(dirCont, fileType{filename: dirEntry.Name(), isDir: dirEntry.IsDir(), parent: path, weight: getFileWeight(path + string(separator) + dirEntry.Name())})
 		}
 		if dirEntry.IsDir() {
-			newDirCont, err := readDir(path+string(sep)+dirEntry.Name(), printFiles)
+			newDirCont, err := readDir(path+string(separator)+dirEntry.Name(), printFiles)
 			if err != nil {
 				return &dirCont, err
 			}
