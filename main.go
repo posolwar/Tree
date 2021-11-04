@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 )
@@ -44,18 +45,18 @@ func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string)
 	for _, readFile := range *dir {
 		if readFile.isDir {
 			if dir.lastInDir(&readFile) {
-				scheme += fmt.Sprintf("%s%s %s\n", indent, lastFileOrDir, readFile.filename)
+				scheme += fmt.Sprintf("%s%s%s\n", indent, lastFileOrDir, readFile.filename)
 				scheme += drawCatalog(readFile.content, true, indent+"\t")
 			} else {
-				scheme += fmt.Sprintf("%s%s %s \n", indent, notLastDir, readFile.filename)
+				scheme += fmt.Sprintf("%s%s%s\n", indent, notLastDir, readFile.filename)
 				scheme += drawCatalog(readFile.content, false, indent+notLastFile+"\t")
 			}
 		}
 		if !readFile.isDir {
 			if dir.lastInDir(&readFile) {
-				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, lastFileOrDir, readFile.filename, getWeightString(readFile.weight))
+				scheme += fmt.Sprintf("%s%s%s (%s)\n", indent, lastFileOrDir, readFile.filename, getWeightString(readFile.weight))
 			} else {
-				scheme += fmt.Sprintf("%s%s %s (%s) \n", indent, notLastDir, readFile.filename, getWeightString(readFile.weight))
+				scheme += fmt.Sprintf("%s%s%s (%s)\n", indent, notLastDir, readFile.filename, getWeightString(readFile.weight))
 			}
 		}
 	}
@@ -63,24 +64,31 @@ func drawCatalog(dir *dirContent, lastInDir bool, indent string) (scheme string)
 }
 
 func main() { // main задания, не трогал.
-	out := os.Stdout
+	//out := os.Stdout
+	out := new(bytes.Buffer)
+	path := ""
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
 		panic("usage go run main.go . [-f]")
 	}
-	path := os.Args[1]
+	if len(os.Args) < 1 {
+		path = "."
+	}
+	path = os.Args[1]
 	printFiles := len(os.Args) == 3 && os.Args[2] == "-f"
 	err := dirTree(out, path, printFiles)
 	if err != nil {
 		panic(err.Error())
 	}
+	fmt.Println(out)
 }
 
-func dirTree(out *os.File, path string, printFile bool) error { // работе с деревом
+func dirTree(out *bytes.Buffer, path string, printFile bool) error { // работе с деревом
 	dirCont, err := readDir(path, printFile)
 	if err != nil {
 		return err
 	}
-	fmt.Println(drawCatalog(dirCont, false, ""))
+	scheme := drawCatalog(dirCont, false, "")
+	out.WriteString(scheme)
 	return nil
 }
 
